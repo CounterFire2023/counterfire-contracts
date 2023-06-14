@@ -1,0 +1,28 @@
+{
+  "name": "becrypto",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx truffle test",
+    "build": "truffle compile",
+    "prettier": "prettier --write 'contracts/**/*.sol'",
+    "lint": "prettier --list-different 'contracts/**/*.sol'"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@openzeppelin/test-helpers": "^0.5.15",
+    "@truffle/hdwallet-provider": "^2.0.0",
+    "chai": "^4.3.4",
+    "prettier": "^2.7.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.24",
+    "truffle": "^5.4.23",
+    "truffle-plugin-stdjsonin": "git+https://github.com/mhrsalehi/truffle-plugin-stdjsonin.git",
+    "truffle-plugin-verify": "^0.5.25"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.5.0",
+    "fs-jetpack": "^5.1.0"
+  }
+}
