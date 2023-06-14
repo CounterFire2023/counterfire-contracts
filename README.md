@@ -1,0 +1,1 @@
+# Contract for Counter Fire.
