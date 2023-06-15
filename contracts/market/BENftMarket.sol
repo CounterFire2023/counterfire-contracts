@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract BENFTMarket is Ownable, ReentrancyGuard, ERC1155Holder, ERC721Holder {
+contract BENftMarket is Ownable, ReentrancyGuard, ERC1155Holder, ERC721Holder {
   using SafeERC20 for IERC20;
 
   struct OrderInfo {
