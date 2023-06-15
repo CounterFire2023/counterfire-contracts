@@ -47,7 +47,6 @@ contract GameItemMall is MallBase, ReentrancyGuard, HasSignature, TimeChecker {
       orderId,
       currency,
       price,
-      feeToAddress,
       startTime,
       saltNonce
     );
@@ -73,7 +72,6 @@ contract GameItemMall is MallBase, ReentrancyGuard, HasSignature, TimeChecker {
     uint256 _orderId,
     address _currency,
     uint256 _price,
-    address _feeToAddress,
     uint256 _startTime,
     uint256 _saltNonce
   ) public pure returns (bytes32) {
@@ -82,7 +80,6 @@ contract GameItemMall is MallBase, ReentrancyGuard, HasSignature, TimeChecker {
       _orderId,
       _currency,
       _price,
-      _feeToAddress,
       _startTime,
       _saltNonce
     );
