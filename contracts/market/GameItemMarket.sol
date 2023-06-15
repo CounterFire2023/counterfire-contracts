@@ -11,7 +11,12 @@ import "./MallBase.sol";
  *  @title GameItemMarket
  *  @dev GameItemMarket is a contract for users sell item in game.
  */
-contract GameItemMall is MallBase, ReentrancyGuard, HasSignature, TimeChecker {
+contract GameItemMarket is
+  MallBase,
+  ReentrancyGuard,
+  HasSignature,
+  TimeChecker
+{
   using SafeERC20 for IERC20;
 
   mapping(uint256 => address) public orderIdUsed;
@@ -54,9 +59,8 @@ contract GameItemMall is MallBase, ReentrancyGuard, HasSignature, TimeChecker {
     );
     // check if price is valid
     require(price > 0, "GameItemMarket: price is zero");
-    address buyer = _msgSender();
     bytes32 criteriaMessageHash = getMessageHash(
-      buyer,
+      _msgSender(),
       seller,
       orderId,
       currency,
@@ -66,22 +70,38 @@ contract GameItemMall is MallBase, ReentrancyGuard, HasSignature, TimeChecker {
       saltNonce
     );
     checkSigner(executor, criteriaMessageHash, signature);
+    require(
+      IERC20(currency).balanceOf(_msgSender()) >= price,
+      "GameItemMall: buyer doesn't have enough token to buy this item"
+    );
+    require(
+      IERC20(currency).allowance(_msgSender(), address(this)) >= price,
+      "GameItemMall: buyer doesn't approve marketplace to spend payment amount"
+    );
     uint256 _transactionFee = (price * transactionFee) / ROUND;
     if (_transactionFee > 0) {
-      IERC20(currency).safeTransferFrom(buyer, feeToAddress, _transactionFee);
+      IERC20(currency).safeTransferFrom(
+        _msgSender(),
+        feeToAddress,
+        _transactionFee
+      );
     }
-    IERC20(currency).safeTransferFrom(buyer, seller, price - _transactionFee);
-    orderIdUsed[orderId] = buyer;
+    IERC20(currency).safeTransferFrom(
+      _msgSender(),
+      seller,
+      price - _transactionFee
+    );
+    orderIdUsed[orderId] = _msgSender();
     _useSignature(signature);
 
-    emit ItemSoldOut(buyer, seller, orderId, currency, price);
+    emit ItemSoldOut(_msgSender(), seller, orderId, currency, price);
   }
 
   function setTransactionFee(uint256 _transactionFee) external onlyOwner {
     require(
       _transactionFee >= MIN_TRANSACTION_FEE &&
         _transactionFee <= MAX_TRANSACTION_FEE,
-      "GameItemMarket: _transactionFee must >= 0.5% and <= 10%"
+      "GameItemMarket: _transactionFee must >= 0 and <= 10%"
     );
     transactionFee = _transactionFee;
   }

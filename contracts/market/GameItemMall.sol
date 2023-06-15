@@ -52,7 +52,16 @@ contract GameItemMall is MallBase, ReentrancyGuard, HasSignature, TimeChecker {
       saltNonce
     );
     checkSigner(executor, criteriaMessageHash, signature);
-    IERC20(currency).safeTransferFrom(_msgSender(), feeToAddress, price);
+    IERC20 paymentContract = IERC20(currency);
+    require(
+      paymentContract.balanceOf(buyer) >= price,
+      "GameItemMall: buyer doesn't have enough token to buy this item"
+    );
+    require(
+      paymentContract.allowance(buyer, address(this)) >= price,
+      "GameItemMall: buyer doesn't approve marketplace to spend payment amount"
+    );
+    paymentContract.safeTransferFrom(_msgSender(), feeToAddress, price);
     orderIdUsed[orderId] = buyer;
     _useSignature(signature);
 
