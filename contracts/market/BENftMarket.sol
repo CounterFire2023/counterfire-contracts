@@ -234,7 +234,7 @@ contract BENftMarket is Ownable, ReentrancyGuard, ERC1155Holder, ERC721Holder {
   }
 
   function updatePrice(uint256 orderId, uint256 price) external {
-    OrderInfo memory orderInfo = orderInfos[orderId];
+    OrderInfo storage orderInfo = orderInfos[orderId];
     require(orderInfo.tokenId != 0, "NFTMarket: NFT does not exist");
     require(orderInfo.owner == _msgSender(), "NFTMarket: caller is not owner");
     require(
