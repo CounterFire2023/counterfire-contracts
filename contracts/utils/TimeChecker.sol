@@ -3,7 +3,6 @@ pragma solidity 0.8.10;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TimeChecker is Ownable {
-  mapping(address => bool) private approvalLists;
   uint256 private _duration;
 
   constructor() {
