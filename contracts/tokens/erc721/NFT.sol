@@ -77,15 +77,15 @@ contract NFT is AccessControl, ERC721Enumerable {
   /**
    * @dev Add address for lock item
    */
-  function grantLockRole(address to) external {
+  function setLockRole(address to) external {
     grantRole(LOCK_ROLE, to);
   }
 
   /**
    * @dev Remove address for lock item
    */
-  function removeLockRole(address account) external {
-    revokeRole(LOCK_ROLE, account);
+  function removeLockRole(address to) external {
+    revokeRole(LOCK_ROLE, to);
   }
 
   /**
