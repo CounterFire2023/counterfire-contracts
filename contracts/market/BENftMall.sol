@@ -5,112 +5,161 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../core/HasSignature.sol";
-import "../interfaces/IBEERC721.sol";
+import "../interfaces/IBEERC1155.sol";
+import "../interfaces/IAsset.sol";
 import "../utils/TimeChecker.sol";
+import "../utils/UInt.sol";
 import "./MallBase.sol";
 
 contract BENftMall is MallBase, ReentrancyGuard, HasSignature, TimeChecker {
   using SafeERC20 for IERC20;
+  using UInt for uint256;
 
   constructor() HasSignature("NftMall", "1") {}
 
-  mapping(address => bool) public nftTokenSupported;
+  mapping(address => bool) public erc721Supported;
+  mapping(address => bool) public erc1155Supported;
 
   // Events
   event BuyTransaction(
     address indexed buyer,
-    uint256 indexed nonce,
-    uint256 tokenId,
-    address[3] addresses,
-    uint256 price
+    uint256 indexed orderId,
+    address currency,
+    uint256 price,
+    address[] nftAddresses,
+    uint256[] ids,
+    uint256[] amounts
   );
 
-  function addNFTTokenSupport(address nftToken) external onlyOwner {
-    nftTokenSupported[nftToken] = true;
-  }
+  event AddNFTSuppout(address nftToken);
+  event RemoveNFTSuppout(address nftToken);
 
-  function removeNFTTokenSupport(address nftToken) external onlyOwner {
-    nftTokenSupported[nftToken] = false;
-  }
-
-  function ignoreSignature(
-    address[4] calldata addresses,
-    uint256[] calldata signArray,
-    bytes calldata signature
-  ) external signatureValid(signature) {
-    // address[4] [seller_address,nft_address,payment_token_address, buyer_address]
-    // uint256[4] [token_id,price,salt_nonce,startTime]
-    bytes32 criteriaMessageHash = getMessageHash(
-      addresses[1],
-      addresses[2],
-      addresses[3],
-      signArray
-    );
-
-    checkSigner(_msgSender(), criteriaMessageHash, signature);
-    _useSignature(signature);
+  /**
+   * @dev Add ERC20 support
+   */
+  function addERC721Support(address nftToken) external onlyOwner {
+    erc721Supported[nftToken] = true;
+    emit AddNFTSuppout(nftToken);
   }
 
   /**
-   * @dev Function matched transaction with user signatures
+   * @dev Remove 721 NFT support
+   */
+  function removeERC721Support(address nftToken) external onlyOwner {
+    erc721Supported[nftToken] = false;
+    emit RemoveNFTSuppout(nftToken);
+  }
+
+  /**
+   * @dev Add 1155 NFT support
+   */
+  function addERC1155Support(address nftToken) external onlyOwner {
+    erc1155Supported[nftToken] = true;
+    emit AddNFTSuppout(nftToken);
+  }
+
+  /**
+   * @dev Remove 1155 NFT support
+   */
+  function removeERC1155Support(address nftToken) external onlyOwner {
+    erc1155Supported[nftToken] = false;
+    emit RemoveNFTSuppout(nftToken);
+  }
+
+  /**
+   * @dev Buy NFT and other Game item from mall
    */
   function buyNFT(
-    address[3] calldata addresses,
-    uint256[4] calldata values,
+    address currency,
+    address[] memory nftAddresses,
+    uint256[] memory ids,
+    uint256[] memory amounts,
+    uint256[] memory values, // [orderId, price, startTime, saltNonce]
     bytes calldata signature
-  ) external nonReentrant signatureValid(signature) timeValid(values[3]) {
-    // address[3] [seller_address,nft_address,payment_token_address]
-    // uint256[4] [token_id,price,salt_nonce,startTime]
-    // bytes seller_signature
-    require(nftTokenSupported[addresses[1]], "BENftMall: Unsupported NFT");
-    require(erc20Supported[addresses[2]], "BENftMall: invalid payment method");
-    address to = _msgSender();
+  ) external nonReentrant signatureValid(signature) timeValid(values[2]) {
+    require(erc20Supported[currency], "BENftMall: invalid payment method");
+    require(values.length == 4, "BENftMall: invalid values length");
+    require(
+      nftAddresses.length == ids.length && ids.length == amounts.length,
+      "BENftMall: nftAddresses, ids and amounts length mismatch"
+    );
 
-    uint256[] memory signArray = new uint256[](values.length);
+    require(nftAddresses.length > 0, "BENftMall: ids length is zero");
+    for (uint256 i = 0; i < nftAddresses.length; ++i) {
+      require(
+        erc721Supported[nftAddresses[i]] || erc1155Supported[nftAddresses[i]],
+        "BENftMall: nft token is not supported"
+      );
+    }
+    uint256[] memory signArray = new uint256[](ids.length * 2 + 4);
+    for (uint256 i = 0; i < nftAddresses.length; ++i) {
+      signArray[i * 2] = ids[i];
+      signArray[i * 2 + 1] = amounts[i];
+    }
     for (uint256 i = 0; i < values.length; ++i) {
-      signArray[i] = values[i];
+      signArray[ids.length * 2 + i] = values[i];
     }
     bytes32 criteriaMessageHash = getMessageHash(
-      addresses[1],
-      addresses[2],
-      to,
+      currency,
+      _msgSender(),
+      nftAddresses,
       signArray
     );
 
-    checkSigner(addresses[0], criteriaMessageHash, signature);
+    checkSigner(executor, criteriaMessageHash, signature);
     // Check payment approval and buyer balance
-    IERC20 paymentContract = IERC20(addresses[2]);
     require(
-      paymentContract.balanceOf(to) >= values[1],
+      IERC20(currency).balanceOf(_msgSender()) >= values[1],
       "BENftMall: buyer doesn't have enough token to buy this item"
     );
     require(
-      paymentContract.allowance(to, address(this)) >= values[1],
-      "BENftMall: buyer doesn't approve marketplace to spend payment amount"
+      IERC20(currency).allowance(_msgSender(), address(this)) >= values[1],
+      "BENftMall: buyer doesn't approve enough token to buy this item"
     );
-    paymentContract.safeTransferFrom(to, feeToAddress, values[1]);
 
-    // mint item to user
-    IBEERC721 nft = IBEERC721(addresses[1]);
-    nft.mint(to, values[0]);
+    // Transfer payment to seller
+    IERC20(currency).safeTransferFrom(_msgSender(), feeToAddress, values[1]);
+    for (uint256 i = 0; i < nftAddresses.length; ++i) {
+      if (erc721Supported[nftAddresses[i]]) {
+        IAsset(nftAddresses[i]).batchMint(
+          _msgSender(),
+          ids[i].asSingletonArray()
+        );
+      } else if (erc1155Supported[nftAddresses[i]]) {
+        IBEERC1155(nftAddresses[i]).mintBatch(
+          _msgSender(),
+          ids[i].asSingletonArray(),
+          amounts[i].asSingletonArray(),
+          ""
+        );
+      }
+    }
     _useSignature(signature);
-    // emit sale event
-    emit BuyTransaction(to, values[2], values[0], addresses, values[1]);
+    // emit buy event
+    emit BuyTransaction(
+      _msgSender(),
+      values[0],
+      currency,
+      values[1],
+      nftAddresses,
+      ids,
+      amounts
+    );
   }
 
   function getMessageHash(
-    address _nftAddress,
     address _tokenAddress,
     address _buyerAddress,
+    address[] memory _nftAddresses,
     uint256[] memory _datas
   ) public pure returns (bytes32) {
-    bytes memory encoded = abi.encodePacked(
-      _nftAddress,
-      _tokenAddress,
-      _buyerAddress
-    );
-    uint256 len = _datas.length;
-    for (uint256 i = 0; i < len; ++i) {
+    bytes memory encoded = abi.encodePacked(_tokenAddress, _buyerAddress);
+
+    for (uint256 i = 0; i < _nftAddresses.length; i++) {
+      encoded = bytes.concat(encoded, abi.encodePacked(_nftAddresses[i]));
+    }
+
+    for (uint256 i = 0; i < _datas.length; ++i) {
       encoded = bytes.concat(encoded, abi.encodePacked(_datas[i]));
     }
     return keccak256(encoded);
