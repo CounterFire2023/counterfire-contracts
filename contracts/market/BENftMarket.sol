@@ -24,6 +24,8 @@ contract BENftMarket is Ownable, ReentrancyGuard, ERC1155Holder, ERC721Holder {
   }
   mapping(address => bool) public erc721Supported;
   mapping(address => bool) public erc1155Supported;
+  mapping(address => bool) public erc721SupportedHistory;
+  mapping(address => bool) public erc1155SupportedHistory;
   mapping(address => bool) public erc20Supported;
   mapping(uint256 => OrderInfo) public orderInfos;
   mapping(address => uint256) public nftPriceMaxLimit;
@@ -109,7 +111,7 @@ contract BENftMarket is Ownable, ReentrancyGuard, ERC1155Holder, ERC721Holder {
       "NFTMarket: Maximum price limit exceeded"
     );
     require(
-      price >= nftPriceMinLimit[nftToken] && price != 0,
+      price >= nftPriceMinLimit[nftToken],
       "NFTMarket: Below the minimum price limit"
     );
     incrId += 1;
@@ -145,9 +147,11 @@ contract BENftMarket is Ownable, ReentrancyGuard, ERC1155Holder, ERC721Holder {
     );
   }
 
-  function buy(uint256 orderId) external nonReentrant {
+  function buy(uint256 orderId, uint256 price) external nonReentrant {
+    require(orderId > 0 && orderId <= incrId, "NFTMarket: orderId error");
     OrderInfo memory orderInfo = orderInfos[orderId];
-    require(orderInfo.tokenId != 0, "NFTMarket: NFT does not exist");
+    require(orderInfo.orderId != 0, "NFTMarket: order info does not exist");
+    require(orderInfo.price == price, "NFTMarket: Price error");
     uint256 _transactionFee = (orderInfo.price * transactionFee) / ROUND;
     tranFeeTotal = tranFeeTotal + _transactionFee;
     uint256 _transactionTax = (orderInfo.price * transactionTax) / ROUND;
@@ -178,13 +182,19 @@ contract BENftMarket is Ownable, ReentrancyGuard, ERC1155Holder, ERC721Holder {
       );
     }
 
-    if (erc721Supported[orderInfo.nftToken]) {
+    if (
+      erc721Supported[orderInfo.nftToken] ||
+      erc721SupportedHistory[orderInfo.nftToken]
+    ) {
       IERC721(orderInfo.nftToken).safeTransferFrom(
         address(this),
         _msgSender(),
         orderInfo.tokenId
       );
-    } else if (erc1155Supported[orderInfo.nftToken]) {
+    } else if (
+      erc1155Supported[orderInfo.nftToken] ||
+      erc1155SupportedHistory[orderInfo.nftToken]
+    ) {
       IERC1155(orderInfo.nftToken).safeTransferFrom(
         address(this),
         _msgSender(),
@@ -208,18 +218,23 @@ contract BENftMarket is Ownable, ReentrancyGuard, ERC1155Holder, ERC721Holder {
   }
 
   function cancelOrder(uint256 orderId) external nonReentrant {
-    require(
-      orderInfos[orderId].owner == _msgSender(),
-      "NFTMarket: cancel caller is not owner"
-    );
+    require(orderId > 0 && orderId <= incrId, "NFTMarket: orderId error");
     OrderInfo memory orderInfo = orderInfos[orderId];
-    if (erc721Supported[orderInfo.nftToken]) {
+    require(orderInfo.orderId != 0, "NFTMarket: NFT does not exist");
+    require(orderInfo.owner == _msgSender(), "NFTMarket: caller is not owner");
+    if (
+      erc721Supported[orderInfo.nftToken] ||
+      erc721SupportedHistory[orderInfo.nftToken]
+    ) {
       IERC721(orderInfo.nftToken).safeTransferFrom(
         address(this),
         _msgSender(),
         orderInfo.tokenId
       );
-    } else if (erc1155Supported[orderInfo.nftToken]) {
+    } else if (
+      erc1155Supported[orderInfo.nftToken] ||
+      erc1155SupportedHistory[orderInfo.nftToken]
+    ) {
       IERC1155(orderInfo.nftToken).safeTransferFrom(
         address(this),
         _msgSender(),
@@ -234,8 +249,9 @@ contract BENftMarket is Ownable, ReentrancyGuard, ERC1155Holder, ERC721Holder {
   }
 
   function updatePrice(uint256 orderId, uint256 price) external {
+    require(orderId > 0 && orderId <= incrId, "NFTMarket: orderId error");
     OrderInfo storage orderInfo = orderInfos[orderId];
-    require(orderInfo.tokenId != 0, "NFTMarket: NFT does not exist");
+    require(orderInfo.orderId != 0, "NFTMarket: NFT does not exist");
     require(orderInfo.owner == _msgSender(), "NFTMarket: caller is not owner");
     require(
       price <= nftPriceMaxLimit[orderInfo.nftToken] ||
@@ -243,7 +259,7 @@ contract BENftMarket is Ownable, ReentrancyGuard, ERC1155Holder, ERC721Holder {
       "NFTMarket: Maximum price limit exceeded"
     );
     require(
-      price >= nftPriceMinLimit[orderInfo.nftToken] && price != 0,
+      price >= nftPriceMinLimit[orderInfo.nftToken],
       "NFTMarket: Below the minimum price limit"
     );
     uint256 priceOld = orderInfo.price;
@@ -270,6 +286,7 @@ contract BENftMarket is Ownable, ReentrancyGuard, ERC1155Holder, ERC721Holder {
    */
   function removeERC721Support(address nftToken) external onlyOwner {
     erc721Supported[nftToken] = false;
+    erc1155SupportedHistory[nftToken] = true;
     emit RemoveNFTSuppout(nftToken);
   }
 
@@ -286,6 +303,7 @@ contract BENftMarket is Ownable, ReentrancyGuard, ERC1155Holder, ERC721Holder {
    */
   function removeERC1155Support(address nftToken) external onlyOwner {
     erc1155Supported[nftToken] = false;
+    erc1155SupportedHistory[nftToken] = true;
     emit RemoveNFTSuppout(nftToken);
   }
 

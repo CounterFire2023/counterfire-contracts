@@ -3,7 +3,7 @@ pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MallBase is Ownable {
+abstract contract MallBase is Ownable {
   address public executor;
   // Address to receive transaction fee
   address public feeToAddress;

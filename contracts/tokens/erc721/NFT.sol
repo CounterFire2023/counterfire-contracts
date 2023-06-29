@@ -109,13 +109,6 @@ contract NFT is AccessControl, ERC721Enumerable {
   }
 
   /**
-   * @dev Get lock status
-   */
-  function isLocked(uint256 tokenId) external view returns (bool) {
-    return lockedTokens[tokenId];
-  }
-
-  /**
    * @dev Set token URI
    */
   function updateBaseURI(
@@ -130,10 +123,10 @@ contract NFT is AccessControl, ERC721Enumerable {
   function _beforeTokenTransfer(
     address from,
     address to,
-    uint256 tokenId
-  ) internal virtual override(ERC721Enumerable) {
-    require(!lockedTokens[tokenId], "Can not transfer locked token");
-    super._beforeTokenTransfer(from, to, tokenId);
+    uint256 firstTokenId,
+    uint256 batchSize
+  ) internal virtual override {
+    super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
   }
 
   /**

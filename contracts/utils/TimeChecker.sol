@@ -4,9 +4,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TimeChecker is Ownable {
   uint256 private _duration;
+  uint256 private minDuration;
 
   constructor() {
     _duration = 1 days;
+    minDuration = 30 minutes;
   }
 
   modifier timeValid(uint256 time) {
@@ -28,6 +30,7 @@ contract TimeChecker is Ownable {
    * @dev Change duration value
    */
   function updateDuation(uint256 valNew) external onlyOwner {
+    require(valNew > minDuration, "duration too short");
     _duration = valNew;
   }
 }
