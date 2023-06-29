@@ -28,8 +28,6 @@ contract GameItemMarket is
   // max transaction fee is: 10%
   uint256 public constant MAX_TRANSACTION_FEE = (10 * ROUND) / 100;
 
-  constructor() HasSignature("GameItemMarket", "1") {}
-
   event ItemSoldOut(
     address indexed buyer,
     address indexed seller,
@@ -65,18 +63,17 @@ contract GameItemMarket is
       orderId,
       currency,
       price,
-      feeToAddress,
       startTime,
       saltNonce
     );
     checkSigner(executor, criteriaMessageHash, signature);
     require(
       IERC20(currency).balanceOf(_msgSender()) >= price,
-      "GameItemMall: buyer doesn't have enough token to buy this item"
+      "GameItemMarket: buyer doesn't have enough token to buy this item"
     );
     require(
       IERC20(currency).allowance(_msgSender(), address(this)) >= price,
-      "GameItemMall: buyer doesn't approve marketplace to spend payment amount"
+      "GameItemMarket: buyer doesn't approve marketplace to spend payment amount"
     );
     uint256 _transactionFee = (price * transactionFee) / ROUND;
     if (_transactionFee > 0) {
@@ -112,7 +109,6 @@ contract GameItemMarket is
     uint256 _orderId,
     address _currency,
     uint256 _price,
-    address _feeToAddress,
     uint256 _startTime,
     uint256 _saltNonce
   ) public pure returns (bytes32) {
@@ -122,7 +118,6 @@ contract GameItemMarket is
       _orderId,
       _currency,
       _price,
-      _feeToAddress,
       _startTime,
       _saltNonce
     );

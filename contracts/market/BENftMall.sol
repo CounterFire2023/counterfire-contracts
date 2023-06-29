@@ -15,8 +15,6 @@ contract BENftMall is MallBase, ReentrancyGuard, HasSignature, TimeChecker {
   using SafeERC20 for IERC20;
   using UInt for uint256;
 
-  constructor() HasSignature("NftMall", "1") {}
-
   mapping(address => bool) public erc721Supported;
   mapping(address => bool) public erc1155Supported;
 

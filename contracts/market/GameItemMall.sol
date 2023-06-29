@@ -18,8 +18,6 @@ contract GameItemMall is MallBase, ReentrancyGuard, HasSignature, TimeChecker {
 
   mapping(uint256 => address) public orderIdUsed;
 
-  constructor() HasSignature("GameItemMarket", "1") {}
-
   event ItemSoldOut(
     address indexed buyer,
     uint256 indexed orderId,
