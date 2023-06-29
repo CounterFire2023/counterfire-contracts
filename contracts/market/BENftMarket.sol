@@ -286,7 +286,7 @@ contract BENftMarket is Ownable, ReentrancyGuard, ERC1155Holder, ERC721Holder {
    */
   function removeERC721Support(address nftToken) external onlyOwner {
     erc721Supported[nftToken] = false;
-    erc1155SupportedHistory[nftToken] = true;
+    erc721SupportedHistory[nftToken] = true;
     emit RemoveNFTSuppout(nftToken);
   }
 
